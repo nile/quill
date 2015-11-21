@@ -130,26 +130,18 @@ class Selection {
 
   getRange() {
     if (!this.checkFocus()) return null;
-    let convert = (node, offset) => {
-      // Does not handle custom parent blots with multiple non-blot children
-      let blot;
-      if (!(node instanceof Text)) {
-        if (offset < node.childNodes.length) {
-          node = node.childNodes[offset];
-          offset = 0;
-        } else {
-          blot = Parchment.findBlot(node, true);
-          return blot.offset(this.doc) + blot.getLength();
-        }
-      }
-      blot = Parchment.findBlot(node, true);
-      return blot.offset(this.doc) + offset;
-    }
     let nativeRange = this.getNativeRange();
     if (nativeRange == null) return null;
-    let start = convert(nativeRange.startContainer, nativeRange.startOffset);
-    let end = (nativeRange.collapsed) ? start : convert(nativeRange.endContainer, nativeRange.endOffset);
-    return new Range(Math.min(start, end), Math.max(start, end));
+    let positions = [[nativeRange.startContainer, nativeRange.startOffset]];
+    if (!nativeRange.collapsed) {
+      positions.push([nativeRange.endContainer, nativeRange.endOffset]);
+    }
+    let indexes = positions.map((position) => {
+      let [container, offset] = position;
+      let blot = Parchment.findBlot(container, true);
+      return blot.offset(this.doc) + blot.findOffset(container) + offset;
+    });
+    return new Range(Math.min(...indexes), Math.max(...indexes));
   }
 
   onUpdate(range) { }
@@ -160,15 +152,15 @@ class Selection {
     let cursor, index = range.start;
     let pos = this.doc.findPath(index).pop();
     if (pos.blot instanceof CursorBlot) {
-      cursor = pos.blot;
       index -= 1;
     } else {
-      let target = pos.blot.split(pos.offset);
-      cursor = Parchment.create('cursor');
-      pos.blot.parent.insertBefore(cursor, target);
+      pos.blot.insertAt(pos.offset, 'cursor', {});
+      pos = this.doc.findPath(index + 1).pop();
+      // pos can be null if insertAt was a noop
+      if (pos == null || !(pos.blot instanceof CursorBlot)) return;
     }
     this.doc.formatAt(index, 1, format, value);
-    this.setNativeRange(cursor.textNode, 1);  // Cursor will not blink if we select cursor.textNode
+    this.setNativeRange(pos.blot.textNode, 1);  // Cursor will not blink if we select cursor.textNode
     this.update();
   }
 
@@ -210,25 +202,18 @@ class Selection {
   }
 
   setRange(range) {
-    let convert = (index) => {
-      let pos = this.doc.findPath(index).pop();
-      if (pos.blot instanceof CursorBlot) {
-        return [pos.blot.textNode, pos.offset];
-      } else if (pos.blot instanceof Parchment.Embed) {
-        let node = pos.blot.domNode.parentNode;
-        return [node, [].indexOf.call(node.childNodes, pos.blot.domNode) + pos.offset];
-      } else {
-        return [pos.blot.domNode, pos.offset];
-      }
-    }
     if (range != null) {
-      let [startNode, startOffset] = convert(range.start);
-      if (range.isCollapsed()) {
-        this.setNativeRange(startNode, startOffset);
-      } else {
-        let [endNode, endOffset] = convert(range.end);
-        this.setNativeRange(startNode, startOffset, endNode, endOffset);
-      }
+      let indexes = range.isCollapsed() ? [range.start] : [range.start, range.end];
+      let args = [];
+      indexes.map((index) => {
+        let [node, offset] = this.doc.findNode(index);
+        if (node instanceof Text) {
+          args.push(node, offset);
+        } else {
+          args.push(node.parentNode, [].indexOf.call(node.parentNode.childNodes, node) + offset);
+        }
+      });
+      this.setNativeRange(...args);
     } else {
       this.setNativeRange(null);
     }

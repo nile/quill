@@ -12,8 +12,9 @@ import BlockBlot from './blots/block';
 import BreakBlot from './blots/break';
 import CursorBlot from './blots/cursor';
 
-import HeaderFormat from './formats/header';
+import CodeBlockFormat from './formats/code-block';
 import EquationFormat from './formats/equation';
+import HeaderFormat from './formats/header';
 import ImageFormat from './formats/image';
 import InlineFormat from './formats/inline';
 
@@ -344,7 +345,7 @@ Quill.themes = {};
 Quill.DEFAULTS = {
   formats: [
     'align', 'direction',
-    'bullet', 'header', 'list',
+    'code-block', 'header', 'list',
     'bold', 'code', 'italic', 'script', 'strike', 'underline',
     'link',
     'background', 'color', 'font', 'size',

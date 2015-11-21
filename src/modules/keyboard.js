@@ -26,10 +26,13 @@ class Keyboard {
     });
     this.quill.root.addEventListener('keydown', (evt) => {
       let which = evt.which || evt.keyCode;
-      let range = this.quill.getSelection();
-      let prevent = (this.bindings[which] || []).reduce(function(prevent, binding) {
+      let range = undefined;
+      let prevent = (this.bindings[which] || []).reduce((prevent, binding) => {
         let [key, callback] = binding;
         if (!match(evt, key)) return prevent;
+        if (range === undefined) {
+          range = this.quill.getSelection();
+        }
         return !callback(range, key, evt) || prevent;
       }, false);
       if (prevent) {
@@ -76,7 +79,7 @@ class Keyboard {
         this.quill.formatLine(range, format, formats[format] - 1, Quill.sources.USER);
       } else {
         this.quill.deleteText(range.start - 1, range.start, Quill.sources.USER);
-        range.shift(-1);
+        range.shift(range.start - 1, -1);
       }
     }
     this.quill.setSelection(range.start, Quill.sources.SILENT);

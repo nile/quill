@@ -10,6 +10,14 @@ class Cursor extends Parchment.Leaf {
     this.domNode.appendChild(this.textNode);
   }
 
+  findNode(index) {
+    return [this.textNode, index];
+  }
+
+  findOffset(node) {
+    return (node === this.domNode || node === this.textNode) ? 0 : -1;
+  }
+
   getLength() {
     return this.textNode.data.length;
   }
@@ -23,6 +31,7 @@ Cursor.tagName = 'span';
 Cursor.CONTENTS = "\uFEFF";   // Zero width space
 
 
-Parchment.register(Cursor, false);
+Parchment.register(Cursor);
+Parchment.register(Parchment.Inline);   // Workaround from Cursor matching span
 
 export { Cursor as default };
